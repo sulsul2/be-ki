@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Headers } from '@nestjs/common';
+import { Body, Controller, Get, Post, Headers, Param } from '@nestjs/common';
 import { MerekService } from './merek.service';
 import { LoginDataResponse, LoginResult } from './models/auth/auth.response';
 import { LoginDto } from './models/auth/auth.dto';
@@ -28,5 +28,26 @@ export class MerekController {
       cookie,
       csrfToken,
     });
+  }
+
+  @Post('save/kuasa')
+  async saveKuasaForm(
+    @Headers('cookie') cookie: string,
+    @Headers('x-csrf-token') csrfToken: string,
+    @Body() saveKuasaDto: string,
+  ): Promise<any> {
+    return this.merekService.saveKuasaForm(saveKuasaDto, {
+      cookie,
+      csrfToken,
+    });
+  }
+
+  @Get('list-prioritas')
+  async listPrioritas(
+    @Headers('cookie') cookie: string,
+    @Headers('x-csrf-token') csrfToken: string,
+    @Param('appNo') appNo: string,
+  ): Promise<any> {
+    return this.merekService.listPrioritas(appNo, { cookie, csrfToken });
   }
 }

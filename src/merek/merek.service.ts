@@ -128,4 +128,57 @@ export class MerekService {
       );
     }
   }
+
+  async saveKuasaForm(
+    saveKuasaDto: string,
+    headers: RequestHeaders,
+  ): Promise<any> {
+    const requestConfig: AxiosRequestConfig = {
+      headers: {
+        Cookie: headers.cookie,
+        'X-CSRF-TOKEN': headers.csrfToken,
+      },
+    };
+
+    try {
+      const response = await merekApi.post(
+        '/layanan/save-online-form-3',
+        saveKuasaDto,
+        requestConfig,
+      );
+      return response.data;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'An unexpected error occurred while saving the form.',
+      );
+    }
+  }
+
+  async listPrioritas(appNo: string, headers: RequestHeaders): Promise<any> {
+    const requestConfig: AxiosRequestConfig = {
+      headers: {
+        Cookie: headers.cookie,
+        'X-CSRF-TOKEN': headers.csrfToken,
+      },
+      params: { appNo },
+    };
+
+    try {
+      const response = await merekApi.get(
+        '/layanan/list-prioritas',
+        requestConfig,
+      );
+      return response.data;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'An unexpected error occurred while getting the data.',
+      );
+    }
+  }
 }
