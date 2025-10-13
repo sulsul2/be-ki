@@ -10,11 +10,8 @@ import * as cheerio from 'cheerio';
 import { LoginDto } from './models/auth/auth.dto';
 import { AxiosRequestConfig } from 'axios';
 import { SaveGeneralDto } from './models/save/save.dto';
-
-interface RequestHeaders {
-  cookie: string;
-  csrfToken: string;
-}
+import { CariPermohonanDto } from './models/permohonan/permohonan.dto';
+import { PermohonanResponse } from './models/permohonan/permohonan.view';
 
 @Injectable()
 export class MerekService {
@@ -65,6 +62,8 @@ export class MerekService {
       headers: {
         Cookie: cookies.join('; '),
       },
+      maxRedirects: 0,
+      validateStatus: (status) => status >= 200 && status < 400,
     };
 
     try {
@@ -73,6 +72,7 @@ export class MerekService {
         formdata,
         requestConfig,
       );
+      console.log(loginResponse);
 
       // A 302 redirect indicates a successful login.
       if (loginResponse.status === 302) {
@@ -91,10 +91,6 @@ export class MerekService {
         'Login failed. Invalid username, password, or CAPTCHA.';
       throw new UnauthorizedException(errorMessage);
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      console.error('Login request failed:', error.message);
       throw new InternalServerErrorException(
         'An unexpected error occurred during the login attempt.',
       );
@@ -103,12 +99,11 @@ export class MerekService {
 
   async saveOnlineForm(
     saveGeneralDto: SaveGeneralDto,
-    headers: RequestHeaders,
+    cookie: string,
   ): Promise<any> {
     const requestConfig: AxiosRequestConfig = {
       headers: {
-        Cookie: headers.cookie,
-        'X-CSRF-TOKEN': headers.csrfToken,
+        Cookie: cookie,
       },
     };
 
@@ -120,23 +115,16 @@ export class MerekService {
       );
       return response.data;
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
       throw new InternalServerErrorException(
         'An unexpected error occurred while saving the form.',
       );
     }
   }
 
-  async saveKuasaForm(
-    saveKuasaDto: string,
-    headers: RequestHeaders,
-  ): Promise<any> {
+  async saveKuasaForm(saveKuasaDto: string, cookie: string): Promise<any> {
     const requestConfig: AxiosRequestConfig = {
       headers: {
-        Cookie: headers.cookie,
-        'X-CSRF-TOKEN': headers.csrfToken,
+        Cookie: cookie,
       },
     };
 
@@ -148,36 +136,171 @@ export class MerekService {
       );
       return response.data;
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
       throw new InternalServerErrorException(
         'An unexpected error occurred while saving the form.',
       );
     }
   }
 
-  async listPrioritas(appNo: string, headers: RequestHeaders): Promise<any> {
-    const requestConfig: AxiosRequestConfig = {
-      headers: {
-        Cookie: headers.cookie,
-        'X-CSRF-TOKEN': headers.csrfToken,
-      },
-      params: { appNo },
-    };
-
+  async listPrioritas(appNo: string, cookie: string): Promise<any> {
     try {
+      const initialResponse = await merekApi.get('/layanan/home', {
+        headers: {
+          Cookie: cookie,
+        },
+        params: { no: appNo },
+      });
+      const html = initialResponse.data;
+
+      const csrfRegex = /var csrf = '([^']+)';/;
+      const match = html.match(csrfRegex);
+
+      if (!match || !match[1]) {
+        throw new UnauthorizedException('Could not find CSRF token.');
+      }
+
+      const csrfToken = match[1];
+
+      const requestConfig: AxiosRequestConfig = {
+        headers: {
+          Cookie: cookie,
+          'X-CSRF-TOKEN': csrfToken,
+          Referer: `https://merek.dgip.go.id/layanan/edit-permohonan-online?no=${appNo}`,
+        },
+        params: { appNo, _: Date.now() },
+      };
       const response = await merekApi.get(
         '/layanan/list-prioritas',
         requestConfig,
       );
+      if (response.status === 302) {
+        throw new UnauthorizedException('Session expired. Please login again.');
+      }
       return response.data;
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
       throw new InternalServerErrorException(
         'An unexpected error occurred while getting the data.',
+      );
+    }
+  }
+
+  async listPermohonan(
+    params: CariPermohonanDto,
+    cookie: string,
+  ): Promise<PermohonanResponse> {
+    try {
+      const listPageResponse = await merekApi.get(
+        '/layanan/list-data-permohonan-online',
+        {
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      const html = listPageResponse.data;
+      const csrfMatch = html.match(/var csrf = '([^']+)';/);
+      if (!csrfMatch || !csrfMatch[1]) {
+        throw new InternalServerErrorException(
+          'Could not extract CSRF token from the application list page.',
+        );
+      }
+      const pageCsrfToken = csrfMatch[1];
+
+      const pageNum = params.page || 1;
+      const limitNum = params.limit || 10;
+      const start = (pageNum - 1) * limitNum;
+
+      const SEARCH_FIELDS = [
+        'txReception.applicationDate',
+        'applicationNoOnline',
+        'txReception.eFilingNo',
+        'txTmBrand.name',
+        'txReception.mFileTypeDetail.id',
+        'classList',
+        'txReception.bankCode',
+      ];
+
+      const searchParams = {
+        'txReception.applicationDate': params.search?.applicationDate,
+        applicationNoOnline: params.search?.applicationNoOnline,
+        'txReception.eFilingNo': params.search?.eFilingNo,
+        'txTmBrand.name': params.search?.brandName,
+        'txReception.mFileTypeDetail.id': params.search?.fileTypeDetailId,
+        classList: params.search?.classList,
+        'txReception.bankCode': params.search?.bankCode,
+      };
+
+      const keywordArr = SEARCH_FIELDS.map(
+        (field) => searchParams[field] || '',
+      );
+
+      const payload = new URLSearchParams();
+      payload.append('draw', String(pageNum));
+      payload.append('start', String(start));
+      payload.append('length', String(limitNum));
+      payload.append('_csrf', pageCsrfToken);
+      payload.append('orderBy', 'txReception.applicationDate');
+      payload.append('orderType', 'DESC');
+      payload.append('search[value]', '');
+      payload.append('search[regex]', 'false');
+      payload.append('order[0][column]', '2');
+      payload.append('order[0][dir]', 'desc');
+      SEARCH_FIELDS.forEach((field) => {
+        payload.append('searchByArr[]', field);
+      });
+      keywordArr.forEach((keyword) => {
+        payload.append('keywordArr[]', keyword);
+      });
+
+      const dataResponse = await merekApi.post(
+        '/layanan/cari-permohonan-online',
+        payload.toString(),
+        {
+          headers: {
+            Cookie: cookie,
+            'X-CSRF-TOKEN': pageCsrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        },
+      );
+
+      const rawData = dataResponse.data.data;
+      const formattedData = rawData.map((item: string[]) => {
+        const actionHTML = cheerio.load(item[12]);
+        const action = actionHTML('a').text();
+
+        const nomorTransaksiHTML = cheerio.load(item[1]);
+        const nomorTransaksi = nomorTransaksiHTML.text();
+
+        return {
+          no: item[0],
+          nomor_transaksi: nomorTransaksi,
+          tanggal_pengajuan: item[2],
+          tipe_merek: item[3],
+          merek: item[4],
+          kelas: item[5],
+          nomor_permohonan: item[6],
+          tipe_permohonan: item[7],
+          jenis_permohonan: item[8],
+          status: item[9],
+          kode_billing: item[10],
+          status_pembayaran: item[11],
+          actions: action,
+        };
+      });
+
+      return {
+        draw: dataResponse.data.draw,
+        recordsTotal: dataResponse.data.recordsTotal,
+        recordsFiltered: dataResponse.data.recordsFiltered,
+        data: formattedData,
+        status: 'OK',
+        message: 'Get permohonan list successfully.',
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to fetch permohonan list.',
       );
     }
   }

@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Post, Headers, Param } from '@nestjs/common';
+import { Body, Controller, Get, Post, Headers, Query } from '@nestjs/common';
 import { MerekService } from './merek.service';
 import { LoginDataResponse, LoginResult } from './models/auth/auth.response';
 import { LoginDto } from './models/auth/auth.dto';
 import { SaveGeneralDto } from './models/save/save.dto';
+import { CariPermohonanDto } from './models/permohonan/permohonan.dto';
 
 @Controller()
 export class MerekController {
@@ -24,10 +25,7 @@ export class MerekController {
     @Headers('x-csrf-token') csrfToken: string,
     @Body() saveGeneralDto: SaveGeneralDto,
   ): Promise<any> {
-    return this.merekService.saveOnlineForm(saveGeneralDto, {
-      cookie,
-      csrfToken,
-    });
+    return this.merekService.saveOnlineForm(saveGeneralDto, cookie);
   }
 
   @Post('save/kuasa')
@@ -36,18 +34,23 @@ export class MerekController {
     @Headers('x-csrf-token') csrfToken: string,
     @Body() saveKuasaDto: string,
   ): Promise<any> {
-    return this.merekService.saveKuasaForm(saveKuasaDto, {
-      cookie,
-      csrfToken,
-    });
+    return this.merekService.saveKuasaForm(saveKuasaDto, cookie);
   }
 
   @Get('list-prioritas')
   async listPrioritas(
-    @Headers('cookie') cookie: string,
-    @Headers('x-csrf-token') csrfToken: string,
-    @Param('appNo') appNo: string,
+    @Headers('Cookie') cookie: string,
+    @Headers('X-CSRF-TOKEN') csrfToken: string,
+    @Query('appNo') appNo: string,
   ): Promise<any> {
-    return this.merekService.listPrioritas(appNo, { cookie, csrfToken });
+    return this.merekService.listPrioritas(appNo, cookie);
+  }
+
+  @Get('permohonan')
+  async listPermohonan(
+    @Headers('Cookie') cookie: string,
+    @Body() body: CariPermohonanDto,
+  ): Promise<any> {
+    return this.merekService.listPermohonan(body, cookie);
   }
 }
