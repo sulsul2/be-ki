@@ -72,7 +72,6 @@ export class MerekService {
         formdata,
         requestConfig,
       );
-      console.log(loginResponse);
 
       // A 302 redirect indicates a successful login.
       if (loginResponse.status === 302) {
