@@ -4,6 +4,8 @@ import { LoginDataResponse, LoginResult } from './models/auth/auth.response';
 import { LoginDto } from './models/auth/auth.dto';
 import { SaveGeneralDto } from './models/save/save.dto';
 import { CariPermohonanDto } from './models/permohonan/permohonan.dto';
+import { SaveGeneralResponse } from './models/save/save.response';
+import { PermohonanResponse } from './models/permohonan/permohonan.response';
 
 @Controller()
 export class MerekController {
@@ -23,7 +25,7 @@ export class MerekController {
   async savePermohonanGeneral(
     @Body() dto: SaveGeneralDto,
     @Headers('Cookie') cookie: string,
-  ): Promise<{ applicationNo: string }> {
+  ): Promise<SaveGeneralResponse> {
     return this.merekService.saveGeneral(dto, cookie);
   }
 
@@ -49,7 +51,7 @@ export class MerekController {
   async listPermohonan(
     @Headers('Cookie') cookie: string,
     @Body() body: CariPermohonanDto,
-  ): Promise<any> {
+  ): Promise<PermohonanResponse> {
     return this.merekService.listPermohonan(body, cookie);
   }
 }

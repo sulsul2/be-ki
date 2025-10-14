@@ -9,8 +9,9 @@ import * as cheerio from 'cheerio';
 import { LoginDto } from './models/auth/auth.dto';
 import { AxiosRequestConfig } from 'axios';
 import { CariPermohonanDto } from './models/permohonan/permohonan.dto';
-import { PermohonanResponse } from './models/permohonan/permohonan.view';
+import { PermohonanResponse } from './models/permohonan/permohonan.response';
 import { SaveGeneralDto } from './models/save/save.dto';
+import { SaveGeneralResponse } from './models/save/save.response';
 
 @Injectable()
 export class MerekService {
@@ -98,7 +99,7 @@ export class MerekService {
   async saveGeneral(
     dto: SaveGeneralDto,
     cookie: string,
-  ): Promise<{ applicationNo: string }> {
+  ): Promise<SaveGeneralResponse> {
     const listPageResponse = await merekApi.get(
       '/layanan/tambah-permohonan-online?billingCode=false',
       {
@@ -147,7 +148,11 @@ export class MerekService {
       },
     );
 
-    return { applicationNo: saveResponse.data };
+    return {
+      data: { applicationNo: saveResponse.data },
+      status: 'OK',
+      message: 'Form saved successfully',
+    };
   }
 
   async saveKuasaForm(saveKuasaDto: string, cookie: string): Promise<any> {
