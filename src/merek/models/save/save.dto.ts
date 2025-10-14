@@ -137,3 +137,24 @@ export class SavePemohonDto {
   @Type(() => PemohonDetailDto)
   additionalOwners?: PemohonDetailDto[];
 }
+
+export class SavePriorityDto {
+  date: string;
+  country: string;
+  countryId: string;
+  no: string;
+  appNo: string;
+}
+
+export class DeletePriorityDto {
+  priorId: string;
+  appNo: string;
+}
+
+export class SaveMerekDto {
+  appNo: string;
+  listImageDetail: string;
+  listDelete: string;
+  agreeDisclaimer: string;
+  txTmBrand: string;
+}

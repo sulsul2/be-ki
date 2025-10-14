@@ -10,10 +10,13 @@ import { LoginDto } from './models/auth/auth.dto';
 import { AxiosRequestConfig } from 'axios';
 import { CariPermohonanDto } from './models/permohonan/permohonan.dto';
 import { PermohonanResponse } from './models/permohonan/permohonan.response';
-import { SaveGeneralDto, SavePemohonDto } from './models/save/save.dto';
+import { DeletePriorityDto, SaveGeneralDto, SaveMerekDto, SavePemohonDto, SavePriorityDto } from './models/save/save.dto';
 import {
+  DeletePriorityResponse,
   SaveGeneralResponse,
+  SaveMerekResponse,
   SavePemohonResponse,
+  SavePriorityResponse,
 } from './models/save/save.response';
 
 @Injectable()
@@ -293,6 +296,124 @@ export class MerekService {
     }
   }
 
+  async savePriority(
+    dto: SavePriorityDto,
+    cookie: string,
+  ): Promise<SavePriorityResponse> {
+    try {
+      const editPageResponse = await merekApi.get(
+        `/layanan/edit-permohonan-online?no=${dto.appNo}`,
+        {
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      const html = editPageResponse.data;
+      const csrfMatch = html.match(/var csrf = '([^']+)';/);
+      if (!csrfMatch || !csrfMatch[1]) {
+        throw new InternalServerErrorException(
+          'Could not extract CSRF token from the edit application page.',
+        );
+      }
+      const pageCsrfToken = csrfMatch[1];
+
+      const saveResponse = await merekApi.get('/layanan/save-online-form-4', {
+        params: {
+          tgl: dto.date,
+          negara: dto.country,
+          negaraId: dto.countryId,
+          no: dto.no,
+          appNo: dto.appNo,
+        },
+        headers: {
+          Cookie: cookie,
+          'X-CSRF-TOKEN': pageCsrfToken,
+          'X-Requested-With': 'XMLHttpRequest',
+          Referer: `https://merek.dgip.go.id/layanan/edit-permohonan-online?no=${dto.appNo}`,
+        },
+        maxRedirects: 0,
+        validateStatus: (status) => status >= 200 && status < 400,
+      });
+
+      if (saveResponse.status === 302) {
+        throw new UnauthorizedException('Session expired. Please login again.');
+      }
+
+      return {
+        status: 'OK',
+        message: 'Priority form saved successfully.',
+        data: saveResponse.data,
+      };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      console.error(error);
+      throw new InternalServerErrorException(
+        'An unexpected error occurred while saving the priority form.',
+      );
+    }
+  }
+
+  async deletePrioritas(
+    dto: DeletePriorityDto,
+    cookie: string,
+  ): Promise<DeletePriorityResponse> {
+    try {
+      const editPageResponse = await merekApi.get(
+        `/layanan/edit-permohonan-online?no=${dto.appNo}`,
+        {
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      const html = editPageResponse.data;
+      const csrfMatch = html.match(/var csrf = '([^']+)';/);
+      if (!csrfMatch || !csrfMatch[1]) {
+        throw new InternalServerErrorException(
+          'Could not extract CSRF token from the edit application page for deletion.',
+        );
+      }
+      const pageCsrfToken = csrfMatch[1];
+
+      const payload = new URLSearchParams();
+      payload.append('idPrior', dto.priorId);
+
+      const deleteResponse = await merekApi.post(
+        '/layanan/delete-online-form-4',
+        payload.toString(),
+        {
+          headers: {
+            Cookie: cookie,
+            'X-CSRF-TOKEN': pageCsrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            Referer: `https://merek.dgip.go.id/layanan/edit-permohonan-online?no=${dto.appNo}`,
+          },
+        },
+      );
+
+      if (deleteResponse.status === 200) {
+        return {
+          status: 'OK',
+          message: 'Priority record deleted successfully.',
+        };
+      } else {
+        // Handle unexpected success statuses if necessary
+        throw new InternalServerErrorException('Received an unexpected response from the server.');
+      }
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException(
+        'An unexpected error occurred while deleting the priority record.',
+      );
+    }
+  }
+
   async listPermohonan(
     params: CariPermohonanDto,
     cookie: string,
@@ -410,6 +531,63 @@ export class MerekService {
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to fetch permohonan list.',
+      );
+    }
+  }
+
+  async saveMerek(
+    dto: SaveMerekDto,
+    file: Express.Multer.File,
+    cookie: string,
+  ): Promise<SaveMerekResponse> {
+    try {
+      const editPageResponse = await merekApi.get(
+        `/layanan/edit-permohonan-online?no=${dto.appNo}`,
+        {
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      const html = editPageResponse.data;
+      const csrfMatch = html.match(/var csrf = '([^']+)';/);
+      if (!csrfMatch || !csrfMatch[1]) {
+        throw new InternalServerErrorException(
+          'Could not extract CSRF token from the edit application page.',
+        );
+      }
+      const pageCsrfToken = csrfMatch[1];
+
+      const formData = new FormData();
+      formData.append('fileMerek', file.buffer, file.originalname);
+      formData.append('listImageDetail', dto.listImageDetail);
+      formData.append('listDelete', dto.listDelete);
+      formData.append('agreeDisclaimer', dto.agreeDisclaimer);
+      formData.append('txTmBrand', dto.txTmBrand);
+
+      const saveResponse = await merekApi.post(
+        '/layanan/save-online-form-5',
+        formData,
+        {
+          headers: {
+            Cookie: cookie,
+            'X-CSRF-TOKEN': pageCsrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+            Referer: `https://merek.dgip.go.id/layanan/edit-permohonan-online?no=${dto.appNo}`,
+          },
+        },
+      );
+
+      return {
+        status: 'OK',
+        message: 'Brand form saved successfully.',
+        data: saveResponse.data,
+      };
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException(
+        'An unexpected error occurred while saving the brand form.',
       );
     }
   }
