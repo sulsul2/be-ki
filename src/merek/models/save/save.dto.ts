@@ -1,4 +1,14 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 
 export enum TipePermohonanEnum {
   MEREK_DAGANG = 'MEREK_DAGANG',
@@ -10,6 +20,11 @@ export enum TipePermohonanEnum {
 export enum JenisPermohonanEnum {
   UMKM = 'UMKM',
   UMUM = 'NUMKM',
+}
+
+export enum JenisKepemilikanEnum {
+  PERORANGAN = 'Perorangan',
+  BADAN_HUKUM = 'Badan Hukum',
 }
 
 export class SaveGeneralDto {
@@ -37,4 +52,88 @@ export class SaveGeneralDto {
   @IsOptional()
   @IsString()
   kodeBilling?: string;
+}
+
+class PemohonDetailDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+}
+
+export class SavePemohonDto {
+  @IsString()
+  @IsNotEmpty()
+  id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  applicationNo: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  nationalityId: string;
+
+  @IsEnum(JenisKepemilikanEnum, {
+    message: 'ownerType harus salah satu dari: Perorangan, Badan Hukum',
+  })
+  @IsString()
+  @IsNotEmpty()
+  ownerType: JenisKepemilikanEnum;
+
+  @IsString()
+  @IsNotEmpty()
+  countryId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  provinceId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  cityId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  address: string;
+
+  @IsString()
+  @IsNotEmpty()
+  phone: string;
+
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @IsOptional()
+  @IsString()
+  noKtp?: string;
+
+  @IsOptional()
+  @IsString()
+  zipCode?: string;
+
+  @IsOptional()
+  @IsString()
+  whatsapp?: string;
+
+  @IsBoolean()
+  addressFlag: boolean;
+
+  @IsOptional() @IsString() postCountryId?: string;
+  @IsOptional() @IsString() postProvinceId?: string;
+  @IsOptional() @IsString() postCityId?: string;
+  @IsOptional() @IsString() postAddress?: string;
+  @IsOptional() @IsString() postZipCode?: string;
+  @IsOptional() @IsString() postPhone?: string;
+  @IsOptional() @IsEmail() postEmail?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PemohonDetailDto)
+  additionalOwners?: PemohonDetailDto[];
 }

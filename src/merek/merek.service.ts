@@ -10,8 +10,11 @@ import { LoginDto } from './models/auth/auth.dto';
 import { AxiosRequestConfig } from 'axios';
 import { CariPermohonanDto } from './models/permohonan/permohonan.dto';
 import { PermohonanResponse } from './models/permohonan/permohonan.response';
-import { SaveGeneralDto } from './models/save/save.dto';
-import { SaveGeneralResponse } from './models/save/save.response';
+import { SaveGeneralDto, SavePemohonDto } from './models/save/save.dto';
+import {
+  SaveGeneralResponse,
+  SavePemohonResponse,
+} from './models/save/save.response';
 
 @Injectable()
 export class MerekService {
@@ -100,59 +103,131 @@ export class MerekService {
     dto: SaveGeneralDto,
     cookie: string,
   ): Promise<SaveGeneralResponse> {
-    const listPageResponse = await merekApi.get(
-      '/layanan/tambah-permohonan-online?billingCode=false',
-      {
-        headers: {
-          Cookie: cookie,
+    try {
+      const listPageResponse = await merekApi.get(
+        '/layanan/tambah-permohonan-online?billingCode=false',
+        {
+          headers: {
+            Cookie: cookie,
+          },
         },
-      },
-    );
+      );
 
-    const html = listPageResponse.data;
-    const csrfMatch = html.match(/var csrf = '([^']+)';/);
-    if (!csrfMatch || !csrfMatch[1]) {
+      const html = listPageResponse.data;
+      const csrfMatch = html.match(/var csrf = '([^']+)';/);
+      if (!csrfMatch || !csrfMatch[1]) {
+        throw new InternalServerErrorException(
+          'Could not extract CSRF token from the application list page.',
+        );
+      }
+      const pageCsrfToken = csrfMatch[1];
+
+      const payload = {
+        appid: '',
+        law: '7',
+        bankCode: '',
+        applicationDate: dto.tanggalPengajuan,
+        paymentDate: '',
+        mFileSequence: {
+          id: dto.asalPermohonan,
+        },
+        mFileType: {
+          id: dto.tipePermohonan,
+        },
+        mFileTypeDetail: {
+          id: dto.jenisPermohonan,
+        },
+        totalClass: '0',
+        totalPayment: '',
+      };
+
+      const saveResponse = await merekApi.post(
+        '/layanan/save-online-form-1?pnbp=true',
+        payload,
+        {
+          headers: {
+            Cookie: cookie,
+            'X-CSRF-TOKEN': pageCsrfToken,
+          },
+        },
+      );
+
+      return {
+        data: { applicationNo: saveResponse.data },
+        status: 'OK',
+        message: 'Form saved successfully',
+      };
+    } catch (error) {
       throw new InternalServerErrorException(
-        'Could not extract CSRF token from the application list page.',
+        'An unexpected error occurred while saving the form.',
       );
     }
-    const pageCsrfToken = csrfMatch[1];
+  }
 
-    const payload = {
-      appid: '',
-      law: '7',
-      bankCode: '',
-      applicationDate: dto.tanggalPengajuan,
-      paymentDate: '',
-      mFileSequence: {
-        id: dto.asalPermohonan,
-      },
-      mFileType: {
-        id: dto.tipePermohonan,
-      },
-      mFileTypeDetail: {
-        id: dto.jenisPermohonan,
-      },
-      totalClass: '0',
-      totalPayment: '',
-    };
+  async savePemohon(
+    dto: SavePemohonDto,
+    cookie: string,
+  ): Promise<SavePemohonResponse> {
+    try {
+      const listPageResponse = await merekApi.get(
+        '/layanan/tambah-permohonan-online?billingCode=false',
+        {
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
 
-    const saveResponse = await merekApi.post(
-      '/layanan/save-online-form-1?pnbp=true',
-      payload,
-      {
+      const html = listPageResponse.data;
+      const csrfMatch = html.match(/var csrf = '([^']+)';/);
+      if (!csrfMatch || !csrfMatch[1]) {
+        throw new InternalServerErrorException(
+          'Could not extract CSRF token from the application list page.',
+        );
+      }
+      const pageCsrfToken = csrfMatch[1];
+
+      const payload = {
+        id: dto.id,
+        txTmGeneral: { applicationNo: dto.applicationNo },
+        name: dto.name,
+        no: dto.noKtp || null,
+        nationality: { id: dto.nationalityId },
+        ownerType: dto.ownerType,
+        mCountry: { id: dto.countryId },
+        mProvince: { id: dto.provinceId },
+        mCity: { id: dto.cityId },
+        address: dto.address,
+        zipCode: dto.zipCode || null,
+        phone: dto.phone,
+        email: dto.email,
+        whatsapp: dto.whatsapp || null,
+        addressFlag: dto.addressFlag,
+        postCountry: { id: dto.postCountryId },
+        postProvince: { id: dto.postProvinceId },
+        postCity: { id: dto.postCityId },
+        postAddress: dto.postAddress,
+        postZipCode: dto.postZipCode,
+        postPhone: dto.postPhone,
+        postEmail: dto.postEmail,
+        txTmOwnerDetails: dto.additionalOwners || [],
+      };
+
+      await merekApi.post('/layanan/save-online-form-2', payload, {
         headers: {
           Cookie: cookie,
           'X-CSRF-TOKEN': pageCsrfToken,
         },
-      },
-    );
-
-    return {
-      data: { applicationNo: saveResponse.data },
-      status: 'OK',
-      message: 'Form saved successfully',
-    };
+      });
+      return {
+        status: 'OK',
+        message: 'Form saved successfully',
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'An unexpected error occurred while saving the form.',
+      );
+    }
   }
 
   async saveKuasaForm(saveKuasaDto: string, cookie: string): Promise<any> {

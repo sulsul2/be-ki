@@ -5,3 +5,8 @@ export interface SaveGeneralResponse {
     applicationNo: string;
   };
 }
+
+export interface SavePemohonResponse {
+  status: string;
+  message: string;
+}
