@@ -2,13 +2,13 @@ import { Body, Controller, Get, Post, Headers, Query, UseInterceptors, UploadedF
 import { MerekService } from './merek.service';
 import { LoginDataResponse, LoginResult } from './models/auth/auth.response';
 import { LoginDto } from './models/auth/auth.dto';
-import { DeletePriorityDto, SaveGeneralDto, SaveMerekDto, SavePemohonDto, SavePriorityDto } from './models/save/save.dto';
-import { CariPermohonanDto } from './models/permohonan/permohonan.dto';
+import { DeletePriorityDto, SaveGeneralDto, SaveMerekDto, SaveApplicantDto, SavePriorityDto } from './models/save/save.dto';
+import { ApplicantSearchDto } from './models/permohonan/permohonan.dto';
 import {
   DeletePriorityResponse,
   SaveGeneralResponse,
   SaveMerekResponse,
-  SavePemohonResponse,
+  SaveApplicantResponse,
   SavePriorityResponse,
 } from './models/save/save.response';
 import { PermohonanResponse } from './models/permohonan/permohonan.response';
@@ -38,10 +38,10 @@ export class MerekController {
 
   @Post('/save/pemohon')
   async savePemohonForm(
-    @Body() dto: SavePemohonDto,
+    @Body() dto: SaveApplicantDto,
     @Headers('Cookie') cookie: string,
-  ): Promise<SavePemohonResponse> {
-    return this.merekService.savePemohon(dto, cookie);
+  ): Promise<SaveApplicantResponse> {
+    return this.merekService.saveApplicant(dto, cookie);
   }
 
   @Post('save/kuasa')
@@ -50,7 +50,7 @@ export class MerekController {
     @Headers('x-csrf-token') csrfToken: string,
     @Body() saveKuasaDto: string,
   ): Promise<any> {
-    return this.merekService.saveKuasaForm(saveKuasaDto, cookie);
+    return this.merekService.saveRepresentativeForm(saveKuasaDto, cookie);
   }
 
   @Get('/save/priority')
@@ -67,7 +67,7 @@ export class MerekController {
     @Headers('X-CSRF-TOKEN') csrfToken: string,
     @Query('appNo') appNo: string,
   ): Promise<any> {
-    return this.merekService.listPrioritas(appNo, cookie);
+    return this.merekService.listPriority(appNo, cookie);
   }
 
   @Post('/delete/priority')
@@ -75,7 +75,7 @@ export class MerekController {
     @Body() dto: DeletePriorityDto,
     @Headers('Cookie') cookie: string,
   ): Promise<DeletePriorityResponse> {
-    return this.merekService.deletePrioritas(dto, cookie);
+    return this.merekService.deletePriority(dto, cookie);
   }
 
   @Post('/save/merek')
@@ -91,8 +91,8 @@ export class MerekController {
   @Get('permohonan')
   async listPermohonan(
     @Headers('Cookie') cookie: string,
-    @Body() body: CariPermohonanDto,
+    @Body() body: ApplicantSearchDto,
   ): Promise<PermohonanResponse> {
-    return this.merekService.listPermohonan(body, cookie);
+    return this.merekService.listApplicant(body, cookie);
   }
 }

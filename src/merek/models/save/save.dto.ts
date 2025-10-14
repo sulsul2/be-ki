@@ -60,7 +60,7 @@ class PemohonDetailDto {
   name: string;
 }
 
-export class SavePemohonDto {
+export class SaveApplicantDto {
   @IsString()
   @IsNotEmpty()
   id: string;

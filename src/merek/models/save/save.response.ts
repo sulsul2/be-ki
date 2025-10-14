@@ -6,7 +6,7 @@ export interface SaveGeneralResponse {
   };
 }
 
-export interface SavePemohonResponse {
+export interface SaveApplicantResponse {
   status: string;
   message: string;
 }

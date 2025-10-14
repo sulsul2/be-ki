@@ -38,7 +38,7 @@ export class SearchDto {
   bankCode?: string;
 }
 
-export class CariPermohonanDto {
+export class ApplicantSearchDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
