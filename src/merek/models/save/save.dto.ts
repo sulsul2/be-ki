@@ -1,55 +1,23 @@
-import { Type } from 'class-transformer';
-import {
-  IsNotEmpty,
-  IsObject,
-  IsString,
-  ValidateNested,
-} from 'class-validator';
-
-class MFileDetailDto {
-  @IsString()
-  @IsNotEmpty()
-  id: string;
-}
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class SaveGeneralDto {
   @IsString()
   @IsNotEmpty()
-  appid: string;
+  tanggalPengajuan: string; // Contoh: "14/10/2025 11:37:02"
 
   @IsString()
   @IsNotEmpty()
-  law: string;
-
-  @IsString()
-  bankCode: string;
+  tipePermohonan: string; // Contoh: "MEREK_DAGANG, MEREK_JASA, MEREK_KOLEKTIF, MEREK_DAGANG_JASA"
 
   @IsString()
   @IsNotEmpty()
-  applicationDate: string;
-
-  @IsString()
-  paymentDate: string;
-
-  @IsObject()
-  @ValidateNested()
-  @Type(() => MFileDetailDto)
-  mFileSequence: MFileDetailDto;
-
-  @IsObject()
-  @ValidateNested()
-  @Type(() => MFileDetailDto)
-  mFileType: MFileDetailDto;
-
-  @IsObject()
-  @ValidateNested()
-  @Type(() => MFileDetailDto)
-  mFileTypeDetail: MFileDetailDto;
+  asalPermohonan: string; // Contoh: "ONLINE"
 
   @IsString()
   @IsNotEmpty()
-  totalClass: string;
+  jenisPermohonan: string; // Contoh: "UMKM" atau "NUMKM"
 
+  @IsOptional()
   @IsString()
-  totalPayment: string;
+  kodeBilling?: string; // Kode billing bersifat opsional di sini
 }

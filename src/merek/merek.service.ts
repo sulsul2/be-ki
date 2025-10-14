@@ -1,5 +1,4 @@
 import {
-  HttpException,
   Injectable,
   InternalServerErrorException,
   UnauthorizedException,
@@ -9,9 +8,9 @@ import { merekApi } from 'src/shared/axios';
 import * as cheerio from 'cheerio';
 import { LoginDto } from './models/auth/auth.dto';
 import { AxiosRequestConfig } from 'axios';
-import { SaveGeneralDto } from './models/save/save.dto';
 import { CariPermohonanDto } from './models/permohonan/permohonan.dto';
 import { PermohonanResponse } from './models/permohonan/permohonan.view';
+import { SaveGeneralDto } from './models/save/save.dto';
 
 @Injectable()
 export class MerekService {
@@ -96,28 +95,59 @@ export class MerekService {
     }
   }
 
-  async saveOnlineForm(
-    saveGeneralDto: SaveGeneralDto,
+  async saveGeneral(
+    dto: SaveGeneralDto,
     cookie: string,
-  ): Promise<any> {
-    const requestConfig: AxiosRequestConfig = {
-      headers: {
-        Cookie: cookie,
+  ): Promise<{ applicationNo: string }> {
+    const listPageResponse = await merekApi.get(
+      '/layanan/tambah-permohonan-online?billingCode=false',
+      {
+        headers: {
+          Cookie: cookie,
+        },
       },
-    };
+    );
 
-    try {
-      const response = await merekApi.post(
-        '/layanan/save-online-form-1',
-        saveGeneralDto,
-        requestConfig,
-      );
-      return response.data;
-    } catch (error) {
+    const html = listPageResponse.data;
+    const csrfMatch = html.match(/var csrf = '([^']+)';/);
+    if (!csrfMatch || !csrfMatch[1]) {
       throw new InternalServerErrorException(
-        'An unexpected error occurred while saving the form.',
+        'Could not extract CSRF token from the application list page.',
       );
     }
+    const pageCsrfToken = csrfMatch[1];
+
+    const payload = {
+      appid: '',
+      law: '7',
+      bankCode: '',
+      applicationDate: dto.tanggalPengajuan,
+      paymentDate: '',
+      mFileSequence: {
+        id: dto.asalPermohonan,
+      },
+      mFileType: {
+        id: dto.tipePermohonan,
+      },
+      mFileTypeDetail: {
+        id: dto.jenisPermohonan,
+      },
+      totalClass: '0',
+      totalPayment: '',
+    };
+
+    const saveResponse = await merekApi.post(
+      '/layanan/save-online-form-1?pnbp=true',
+      payload,
+      {
+        headers: {
+          Cookie: cookie,
+          'X-CSRF-TOKEN': pageCsrfToken,
+        },
+      },
+    );
+
+    return { applicationNo: saveResponse.data };
   }
 
   async saveKuasaForm(saveKuasaDto: string, cookie: string): Promise<any> {

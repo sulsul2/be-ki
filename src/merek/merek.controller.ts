@@ -19,13 +19,12 @@ export class MerekController {
     return this.merekService.login(loginDto);
   }
 
-  @Post('save/general')
-  async saveGeneralForm(
-    @Headers('cookie') cookie: string,
-    @Headers('x-csrf-token') csrfToken: string,
-    @Body() saveGeneralDto: SaveGeneralDto,
-  ): Promise<any> {
-    return this.merekService.saveOnlineForm(saveGeneralDto, cookie);
+  @Post('/save/general')
+  async savePermohonanGeneral(
+    @Body() dto: SaveGeneralDto,
+    @Headers('Cookie') cookie: string,
+  ): Promise<{ applicationNo: string }> {
+    return this.merekService.saveGeneral(dto, cookie);
   }
 
   @Post('save/kuasa')
