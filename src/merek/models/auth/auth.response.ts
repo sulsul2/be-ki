@@ -9,6 +9,8 @@ export interface LoginDataResponse {
 export interface LoginResult {
   status: string;
   message: string;
-  location?: string;
-  sessionCookies?: string[];
+  data: {
+    location?: string;
+    sessionCookies?: string[];
+  };
 }

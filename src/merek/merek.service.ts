@@ -94,8 +94,10 @@ export class MerekService {
         return {
           status: 'OK',
           message: 'Login successful!',
-          location: loginResponse.headers.location,
-          sessionCookies: loginResponse.headers['set-cookie'],
+          data: {
+            location: loginResponse.headers.location,
+            sessionCookies: loginResponse.headers['set-cookie'],
+          },
         };
       }
 
