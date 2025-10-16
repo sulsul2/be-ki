@@ -1,5 +1,5 @@
 import axios from 'axios';
 
 export const merekApi = axios.create({
-  baseURL: 'https://merek.dgip.go.id',
+  baseURL: process.env.MEREK_BASE_URL,
 });

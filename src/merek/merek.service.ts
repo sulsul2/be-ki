@@ -10,7 +10,13 @@ import { LoginDto } from './models/auth/auth.dto';
 import { AxiosRequestConfig } from 'axios';
 import { ApplicantSearchDto } from './models/permohonan/permohonan.dto';
 import { PermohonanResponse } from './models/permohonan/permohonan.response';
-import { DeletePriorityDto, SaveGeneralDto, SaveMerekDto, SaveApplicantDto, SavePriorityDto } from './models/save/save.dto';
+import {
+  DeletePriorityDto,
+  SaveGeneralDto,
+  SaveMerekDto,
+  SaveApplicantDto,
+  SavePriorityDto,
+} from './models/save/save.dto';
 import {
   DeletePriorityResponse,
   SaveGeneralResponse,
@@ -18,6 +24,7 @@ import {
   SaveApplicantResponse,
   SavePriorityResponse,
 } from './models/save/save.response';
+import { extractTextFromImage } from 'src/shared/openai';
 
 @Injectable()
 export class MerekService {
@@ -48,31 +55,34 @@ export class MerekService {
   }
 
   async login(loginDto: LoginDto): Promise<LoginResult> {
-    const {
-      username,
-      password,
-      captchaAnswer,
-      csrfToken,
-      captchaKey,
-      cookies,
-    } = loginDto;
-
-    const formdata = new FormData();
-    formdata.append('username', username);
-    formdata.append('password', password);
-    formdata.append('captchaAnswer', captchaAnswer);
-    formdata.append('captchaKey', captchaKey);
-    formdata.append('_csrf', csrfToken);
-
-    const requestConfig: AxiosRequestConfig = {
-      headers: {
-        Cookie: cookies.join('; '),
-      },
-      maxRedirects: 0,
-      validateStatus: (status) => status >= 200 && status < 400,
-    };
-
     try {
+      const loadLoginPage = await merekApi.get('/login');
+
+      const cookies = loadLoginPage.headers['set-cookie'];
+      const pageHTML = cheerio.load(loadLoginPage.data);
+
+      const csrfToken = pageHTML('input[name="_csrf"]').val();
+      const captchaKey = pageHTML('input[name="captchaKey"]').val();
+      const captchaBase64 = pageHTML('img[src^="data:image/png;base64,"]').attr(
+        'src',
+      );
+
+      const captchaAnswer = await extractTextFromImage(captchaBase64 || '');
+
+      const formdata = new FormData();
+      formdata.append('username', loginDto.username);
+      formdata.append('password', loginDto.password);
+      formdata.append('captchaAnswer', captchaAnswer);
+      formdata.append('captchaKey', captchaKey);
+      formdata.append('_csrf', csrfToken);
+
+      const requestConfig: AxiosRequestConfig = {
+        headers: {
+          Cookie: cookies ? cookies.join('; ') : '',
+        },
+        maxRedirects: 0,
+        validateStatus: (status) => status >= 200 && status < 400,
+      };
       const loginResponse = await merekApi.post(
         '/login',
         formdata,
@@ -89,7 +99,6 @@ export class MerekService {
         };
       }
 
-      // A 200 status on the login POST means failure (the page re-rendered with an error).
       const $ = cheerio.load(loginResponse.data);
       const errorMessage =
         $('.alert-danger').text().trim() ||
@@ -355,7 +364,10 @@ export class MerekService {
   }
 
   // save kuasa
-  async saveRepresentativeForm(saveRepresentativeDto: string, cookie: string): Promise<any> {
+  async saveRepresentativeForm(
+    saveRepresentativeDto: string,
+    cookie: string,
+  ): Promise<any> {
     const requestConfig: AxiosRequestConfig = {
       headers: {
         Cookie: cookie,
@@ -526,7 +538,9 @@ export class MerekService {
         };
       } else {
         // Handle unexpected success statuses if necessary
-        throw new InternalServerErrorException('Received an unexpected response from the server.');
+        throw new InternalServerErrorException(
+          'Received an unexpected response from the server.',
+        );
       }
     } catch (error) {
       console.error(error);
